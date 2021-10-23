@@ -1,0 +1,46 @@
+#+TITLE: Stand Up Minicube Ubuntu2004
+* Install Minicube
+Get our repos up to date
+   #+begin_src tmux :session S1
+sudo  apt update -y
+sudo  apt upgrade -y
+   #+end_src
+Install needed dependencies
+   #+begin_src tmux :session S1
+sudo  apt install -y curl wget apt-transport-https
+   #+end_src
+Download the minikube binary
+   #+begin_src tmux :session S1
+wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+   #+end_src
+Move it to bin
+   #+begin_src tmux :session S1
+sudo cp minikube-linux-amd64 /usr/local/bin/minikube
+   #+end_src
+Make it executable
+   #+BEGIN_src tmux :session S1
+sudo chmod +x /usr/local/bin/minikube
+   #+end_src
+Check version
+   #+BEGIN_src tmux :session S1
+minikube version
+   #+end_src
+* Install kubectl
+   #+BEGIN_src tmux :session S1
+curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+   #+end_src
+   #+BEGIN_src tmux :session S1
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl version -o yaml
+   #+end_src
+* Ensure user is part of docker group
+   #+BEGIN_src tmux :session S1
+sudo usermod -aG docker $USER && newgrp docker
+   #+end_src
+* Start mminicube
+   #+BEGIN_src tmux :session S1
+minikube start --driver=docker
+   #+end_src
