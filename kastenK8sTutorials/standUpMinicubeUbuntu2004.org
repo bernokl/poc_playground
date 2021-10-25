@@ -1,4 +1,6 @@
 #+TITLE: Stand Up Minicube Ubuntu2004
+Pirated this amazing tutorial:
+https://www.linuxtechi.com/how-to-install-minikube-on-ubuntu/
 * Install Minicube
 Get our repos up to date
    #+begin_src tmux :session S1
@@ -10,8 +12,9 @@ Install needed dependencies
 sudo  apt install -y curl wget apt-transport-https
    #+end_src
 Download the minikube binary
+## wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
    #+begin_src tmux :session S1
-wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+wget https://github.com/kubernetes/minikube/releases/download/v1.21.0/minikube-linux-amd64
    #+end_src
 Move it to bin
    #+begin_src tmux :session S1
@@ -44,3 +47,70 @@ sudo usermod -aG docker $USER && newgrp docker
    #+BEGIN_src tmux :session S1
 minikube start --driver=docker
    #+end_src
+   #+BEGIN_src tmux :session S1
+minikube status
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl get nodes
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl cluster-info
+   #+end_src
+* Manage addons
+   #+BEGIN_src tmux :session S1
+minikube addons list
+   #+end_src
+   #+BEGIN_src tmux :session S1
+minikube addons enable <addon-name>
+   #+end_src
+* Dashboard
+   #+BEGIN_src tmux :session S1
+minikube dashboard
+   #+end_src
+* Enable ingress controller
+I had a bit of a issue here, it ended up revolving around incorrect /etc/resolv.conf entries
+These helped me trach it down
+#+BEGIN_EXAMPLE
+kubectl get pods -A -w
+kubectl describe pod ingress-nginx-admission-create-xxxx -n ingress-nginx
+#+END_EXAMPLE
+
+   #+BEGIN_src tmux :session S1
+minikube addons enable ingress
+   #+end_src
+* Add deployment that will stand up nginx for us
+   #+BEGIN_src tmux :session S1
+kubectl create deployment my-nginx --image=nginx
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl get deployments.apps my-nginx
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl get pods
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl expose deployment my-nginx --name=my-nginx-svc --type=NodePort --port=80
+   #+end_src
+   #+BEGIN_src tmux :session S1
+kubectl get svc my-nginx-svc
+   #+end_src
+   #+BEGIN_src tmux :session S1
+minikube service my-nginx-svc --url
+   #+end_src
+I had to cutomize the port here to the one showed to me in the above output.
+   #+BEGIN_src tmux :session S1
+curl http://192.168.49.2:30081
+   #+end_src
+
+
+* Lets clean up what we did
+   Stop to delete
+   #+BEGIN_src tmux :session S1
+minikube stop
+   #+end_src
+   #+BEGIN_src tmux :session S1
+minikube delete
+   #+end_src
+
+   Feel free to poke around at the pod/service/deply if you describe them you will get to see the yaml underpinning them.
+   Happy exploring
