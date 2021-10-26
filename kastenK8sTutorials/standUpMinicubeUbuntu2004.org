@@ -12,6 +12,7 @@ Install needed dependencies
 sudo  apt install -y curl wget apt-transport-https
    #+end_src
 Download the minikube binary
+I used the v1.21 while troubleshooting, feel free to use latest
 ## wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
    #+begin_src tmux :session S1
 wget https://github.com/kubernetes/minikube/releases/download/v1.21.0/minikube-linux-amd64
@@ -43,7 +44,7 @@ kubectl version -o yaml
    #+BEGIN_src tmux :session S1
 sudo usermod -aG docker $USER && newgrp docker
    #+end_src
-* Start mminicube
+* Start minicube
    #+BEGIN_src tmux :session S1
 minikube start --driver=docker
    #+end_src
@@ -64,7 +65,11 @@ minikube addons list
 minikube addons enable <addon-name>
    #+end_src
 * Dashboard
-   #+BEGIN_src tmux :session S1
+This one needs the command to remain running, so I chose not to do it in tmate.
+If you have not logged out since adding your user.
+Open a terminal, add your user to the group let the following command run in the new terminal.
+   #+BEGIN_src tmux :session S2
+# sudo usermod -aG docker $USER && newgrp docker
 minikube dashboard
    #+end_src
 * Enable ingress controller
