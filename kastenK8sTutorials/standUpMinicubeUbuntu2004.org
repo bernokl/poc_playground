@@ -84,6 +84,7 @@ kubectl describe pod ingress-nginx-admission-create-xxxx -n ingress-nginx
 minikube addons enable ingress
    #+end_src
 * Add deployment that will stand up nginx for us
+This can be flushed out a bit more, stop at each of the steps and make sure you understand what they do
    #+BEGIN_src tmux :session S1
 kubectl create deployment my-nginx --image=nginx
    #+end_src
