@@ -1,30 +1,65 @@
-#+TITLE: Stand Up Minicube Ubuntu2004
-Pirated this amazing tutorial:
-https://www.linuxtechi.com/how-to-install-minikube-on-ubuntu/
-* Install Minicube
-Get our repos up to date
+#+TITLE: Following kasten.io intro
+The goal is to repeat the lab to run local, to give you a local sandbox with templates alread provided.
+Following https://learning.kasten.io/kubernetes/labs/first-kubernetes-cluster/lessons/lab-1/#lab
+Modifying it to run local
+* Intro
+The course actually has a very nice overview of all the basic components
+I chose not to repeat everything here, instead I encourage you to go through the start of the lab
+Control plane consists of 3 processes:
+- kube-apiserver
+- kube-controller-manager
+- etcd
+- kube-scheduler
+Non-control plan node runs 2 processes:
+- kublet
+- kube-proxy
+* Lets get into the practical
+** 1 Create a cluster
+*** directly on hosts
+The course goes through bare metal instal
+We will be using [[file:standUpMinicubeUbuntu2004.org][minikube]], but I am still capturing the steps
+Get the signing key.
+#+BEGIN_SRC tmux :session s1
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+#+END_SRC
+Add the k8s apt repo
    #+begin_src tmux :session s1
-sudo  apt update -y
-sudo  apt upgrade -y
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
    #+end_src
 Install needed dependencies
    #+begin_src tmux :session s1
-sudo  apt install -y curl wget apt-transport-https
+apt update
+apt install -y kubelet kubeadm kubectl docker.io
+apt-mark hold kubelet kubeadm kubectl
    #+end_src
-Download the minikube binary
-I used the v1.21 while troubleshooting, feel free to use latest
-## wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+*** Using minikube
+- I used [[file:standUpMinicubeUbuntu2004.org][Minikube]] document and finally ran:
    #+begin_src tmux :session s1
-wget https://github.com/kubernetes/minikube/releases/download/v1.21.0/minikube-linux-amd64
+minikube start --nodes 3 --driver=docker
    #+end_src
-Move it to bin
-   #+begin_src tmux :session s1
-sudo cp minikube-linux-amd64 /usr/local/bin/minikube
-   #+end_src
+** Set up the Kubernetes control plane
+   #+BEGIN_SRC json :tangle /tmp/docker-daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+   #+END_SRC
 Make it executable
    #+BEGIN_src tmux :session s1
-sudo chmod +x /usr/local/bin/minikube
+sudo cp /tmp/docker-daemon.json /etc/docker/daemon.json
    #+end_src
+
+
+Only got partway through lesson 1. Runnig out of day, will pick this up again later.
+
+
+
+
+
 Check version
    #+BEGIN_src tmux :session s1
 minikube version
@@ -105,7 +140,7 @@ minikube service my-nginx-svc --url
    #+end_src
 I had to cutomize the port here to the one showed to me in the above output.
    #+BEGIN_src tmux :session s1
-curl http://192.168.49.2:30081
+curl http://192.168.49.2:30486
    #+end_src
 
 
