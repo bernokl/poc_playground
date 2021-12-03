@@ -14,7 +14,7 @@ Non-control plan node runs 2 processes:
 - kublet
 - kube-proxy
 * Lets get into the practical
-** 1 Create a cluster
+** Create a cluster
 *** directly on hosts
 The course goes through bare metal instal
 We will be using [[file:standUpMinicubeUbuntu2004.org][minikube]], but I am still capturing the steps
@@ -37,7 +37,7 @@ apt-mark hold kubelet kubeadm kubectl
    #+begin_src tmux :session s1
 minikube start --nodes 3 --driver=docker
    #+end_src
-** Set up the Kubernetes control plane
+** Set up the Kubernetes control plane (I did not have to do this because I am using minikube)
    #+BEGIN_SRC json :tangle /tmp/docker-daemon.json
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
@@ -48,110 +48,105 @@ minikube start --nodes 3 --driver=docker
   "storage-driver": "overlay2"
 }
    #+END_SRC
-Make it executable
+Move it to /etc/docker
    #+BEGIN_src tmux :session s1
 sudo cp /tmp/docker-daemon.json /etc/docker/daemon.json
    #+end_src
-
-
-Only got partway through lesson 1. Runnig out of day, will pick this up again later.
-
-
-
-
-
-Check version
+Confirm
    #+BEGIN_src tmux :session s1
-minikube version
-   #+end_src
-* Install kubectl
-   #+BEGIN_src tmux :session s1
-curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+sudo cat /etc/docker/daemon.json
    #+end_src
    #+BEGIN_src tmux :session s1
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
+systemctl enable docker
+systemctl daemon-reload
+systemctl restart docker
+   #+end_src
+On the control plane node run this command in order to initialize the kubernets control plane
+   #+BEGIN_src tmux :session s1
+kubeadm init --ignore-preflight-errors=all
    #+end_src
    #+BEGIN_src tmux :session s1
-kubectl version -o yaml
+ls -al $HOME/.kube
    #+end_src
-* Ensure user is part of docker group
+Go grab the kubeconfig that was created as part of the kubeadm init above
+Set the ownership to the current logged in user
    #+BEGIN_src tmux :session s1
-sudo usermod -aG docker $USER && newgrp docker
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
    #+end_src
-* Start minicube
+** Join nodes to the cluster (I did not have to do this because I am using minikube)
+On the control plane run the following
    #+BEGIN_src tmux :session s1
-minikube start --driver=docker
+kubeadm token create --print-join-command
    #+end_src
-   #+BEGIN_src tmux :session s1
-minikube status
-   #+end_src
+Run the join command you got above on the nodes you want to join to your cluster
+It will look somehting like this
+#+BEGIN_EXAMPLE
+kubeadm join 10.132.1.51:6443 --token mastwu.lgy6pl3904y5pirq --discovery-token-ca-cert-hash sha256:70b77a1205b3611dd6c62456d10a9cb62bb8a957a368d73319268c6851314c26
+#+END_EXAMPLE
+Lets check on our nodes
    #+BEGIN_src tmux :session s1
 kubectl get nodes
    #+end_src
+Note the nodes will remain in NotReady status until we configure networking for the nodes
+** Setup a kubernetes add-on for networking (I did not have to do this because I am using minikube)
+Kubernetes Add-Ons are pods and services that implement cluster features. Pods extend the functionality of Kubernetes. You can install addons for a range of cluster features including Networking and Visualization.
+For this example we are going to install weave net
    #+BEGIN_src tmux :session s1
-kubectl cluster-info
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
    #+end_src
-* Manage addons
+Lets watch the weave-net pods come up
    #+BEGIN_src tmux :session s1
-minikube addons list
+watch kubectl get pods --all-namespaces
+   #+end_src
+Note you will see a pod for each nodes
+If you now look at the nodes you will see they are all ready
+#+BEGIN_SRC tmux :session s1
+kubectl get nodes
+#+END_SRC
+** Deploy microservices Minikube users start playing along again
+Lets go grab some code for the sock shop demo
+   #+BEGIN_src tmux :session s1
+git clone https://github.com/microservices-demo/microservices-demo.git
    #+end_src
    #+BEGIN_src tmux :session s1
-minikube addons enable <addon-name>
+cd microservices-demo/deploy/kubernetes
    #+end_src
-* Dashboard
-This one needs the command to remain running, so I chose not to do it in tmate.
-If you have not logged out since adding your user.
-Open a terminal, add your user to the group let the following command run in the new terminal.
-   #+BEGIN_src tmux :session S2
-# sudo usermod -aG docker $USER && newgrp docker
-minikube dashboard
+   #+BEGIN_src tmux :session s1
+kubectl apply -f complete-demo.yaml
    #+end_src
+   #+BEGIN_src tmux :session s1
+   watch kubectl get pods --namespace sock-shop
+   #+end_src
+CTRL+C to exit
+
 * Enable ingress controller
+   #+BEGIN_src tmux :session s1
+minikube addons enable ingress
+   #+end_src
 I had a bit of a issue here, it ended up revolving around incorrect /etc/resolv.conf entries
-These helped me trach it down
+These helped me trace it down
 #+BEGIN_EXAMPLE
 kubectl get pods -A -w
 kubectl describe pod ingress-nginx-admission-create-xxxx -n ingress-nginx
 #+END_EXAMPLE
-
+* Lets go look at our sock-shop
    #+BEGIN_src tmux :session s1
-minikube addons enable ingress
+kubectl get svc -A
    #+end_src
-* Add deployment that will stand up nginx for us
-This can be flushed out a bit more, stop at each of the steps and make sure you understand what they do
+O I see lots of services for sock-shop, but there is one with a NodePort IP called "front end"
    #+BEGIN_src tmux :session s1
-kubectl create deployment my-nginx --image=nginx
+kubectl get svc front-end -n sock-shop
    #+end_src
+Mine looks like this
+   #+BEGIN_EXAMPLE
+NAME        TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+front-end   NodePort   10.99.199.219   <none>        80:30001/TCP   38m
+   #+END_EXAMPLE
    #+BEGIN_src tmux :session s1
-kubectl get deployments.apps my-nginx
+minikube service front-end --url -n sock-shop
    #+end_src
-   #+BEGIN_src tmux :session s1
-kubectl get pods
-   #+end_src
-   #+BEGIN_src tmux :session s1
-kubectl expose deployment my-nginx --name=my-nginx-svc --type=NodePort --port=80
-   #+end_src
-   #+BEGIN_src tmux :session s1
-kubectl get svc my-nginx-svc
-   #+end_src
-   #+BEGIN_src tmux :session s1
-minikube service my-nginx-svc --url
-   #+end_src
-I had to cutomize the port here to the one showed to me in the above output.
-   #+BEGIN_src tmux :session s1
-curl http://192.168.49.2:30486
-   #+end_src
-
-
-* Lets clean up what we did
-   Stop to delete
-   #+BEGIN_src tmux :session s1
-minikube stop
-   #+end_src
-   #+BEGIN_src tmux :session s1
-minikube delete
-   #+end_src
-
-   Feel free to poke around at the pod/service/deply if you describe them you will get to see the yaml underpinning them.
-   Happy exploring
+   NICE!!
+   #+BEGIN_EXAMPLE
+http://192.168.49.2:30001
+   #+END_EXAMPLE
